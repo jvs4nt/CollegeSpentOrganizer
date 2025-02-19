@@ -115,7 +115,7 @@ const styles = StyleSheet.create({
   },
   list: {
     paddingHorizontal: 16,
-    paddingBottom: 80, // para que o botão flutuante não cubra o último item
+    paddingBottom: 80, 
   },
   card: {
     backgroundColor: "#fff",
@@ -161,7 +161,7 @@ const styles = StyleSheet.create({
   fab: {
     position: "absolute",
     right: 20,
-    bottom: 20,
+    bottom: 50,
     backgroundColor: "#6200ee",
     width: 60,
     height: 60,
