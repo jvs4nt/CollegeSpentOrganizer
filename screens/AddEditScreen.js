@@ -24,13 +24,11 @@ const AddEditScreen = ({ route, navigation }) => {
 
   const saveExpense = async () => {
     if (expense) {
-      console.log("Updating expense");
       await updateDoc(doc(db, "expenses", expense.id), {
         description,
         amount: parseFloat(amount),
       });
     } else {
-      console.log("Adding expense");
       try {
         await addDoc(collection(db, "expenses"), {
           description,

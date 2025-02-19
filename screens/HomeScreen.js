@@ -47,15 +47,12 @@ const HomeScreen = ({ navigation }) => {
     });
     setExpenses(expensesList);
     setTotalSaved(total);
-    console.log(expensesList);
   };
 
-  // Busca despesas ao montar a tela
   useEffect(() => {
     fetchExpenses();
   }, []);
 
-  // Recarrega os dados sempre que a tela ganhar foco
   useFocusEffect(
     React.useCallback(() => {
       fetchExpenses();
