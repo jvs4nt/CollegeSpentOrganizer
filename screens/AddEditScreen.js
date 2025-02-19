@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { db } from "../firebase";
 import { collection, addDoc, doc, updateDoc } from "firebase/firestore";
+import { TextInputMask } from 'react-native-masked-text';
 
 const AddEditScreen = ({ route, navigation }) => {
   const [description, setDescription] = useState("");
@@ -23,16 +24,23 @@ const AddEditScreen = ({ route, navigation }) => {
   }, [expense]);
 
   const saveExpense = async () => {
+
+    const rawValue = amount
+      .replace(/[^0-9,]/g, "")  
+      .replace(",", "."); 
+
+    const parsedAmount = parseFloat(rawValue) || 0;
+
     if (expense) {
       await updateDoc(doc(db, "expenses", expense.id), {
         description,
-        amount: parseFloat(amount),
+        amount: parsedAmount,
       });
     } else {
       try {
         await addDoc(collection(db, "expenses"), {
           description,
-          amount: parseFloat(amount),
+          amount: parsedAmount,
         });
       } catch (error) {
         console.error("Error adding document: ", error);
@@ -55,12 +63,20 @@ const AddEditScreen = ({ route, navigation }) => {
           onChangeText={setDescription}
           style={styles.input}
         />
-        <TextInput
+        <TextInputMask
+          type={"money"}
+          options={{
+            precision: 2,
+            separator: ",",
+            delimiter: ".",
+            unit: "R$ ",
+            suffixUnit: "",
+          }}
           placeholder="Amount"
           value={amount}
-          onChangeText={setAmount}
-          keyboardType="numeric"
+          onChangeText={(maskedValue, rawValue) => setAmount(maskedValue)}
           style={styles.input}
+          keyboardType="numeric"
         />
         <TouchableOpacity style={styles.button} onPress={saveExpense}>
           <Text style={styles.buttonText}>Save</Text>
