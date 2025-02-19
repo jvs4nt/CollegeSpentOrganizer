@@ -7,12 +7,15 @@ import {
   TouchableOpacity,
   StyleSheet,
   SafeAreaView,
+  useColorScheme,
 } from "react-native";
 import { db } from "../firebase";
 import { collection, getDocs, deleteDoc, doc } from "firebase/firestore";
 import { useFocusEffect } from "@react-navigation/native";
+import { darkTheme, lightTheme } from "./themes/themes";
 
-const ExpenseCard = ({ item, onEdit, onDelete }) => {
+// Componente para renderizar cada despesa como um "card" animado
+const ExpenseCard = ({ item, onEdit, onDelete, themeStyles }) => {
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
   const handleDelete = () => {
@@ -26,14 +29,14 @@ const ExpenseCard = ({ item, onEdit, onDelete }) => {
   };
 
   return (
-    <Animated.View style={[styles.card, { opacity: fadeAnim }]}>
+    <Animated.View style={[styles.card, themeStyles.card, { opacity: fadeAnim }]}>
       <View style={styles.cardContent}>
-        <Text style={styles.cardTitle}>{item.description}</Text>
-        <Text style={styles.cardAmount}>R${item.amount}</Text>
+        <Text style={[styles.cardTitle, themeStyles.cardTitle]}>{item.description}</Text>
+        <Text style={[styles.cardAmount, themeStyles.cardAmount]}>R${item.amount}</Text>
       </View>
       <View style={styles.cardActions}>
-        <TouchableOpacity style={styles.actionButton} onPress={onEdit}>
-          <Text style={styles.actionText}>Edit</Text>
+        <TouchableOpacity style={[styles.actionButton, themeStyles.actionButton]} onPress={onEdit}>
+          <Text style={[styles.actionText, themeStyles.actionText]}>Edit</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.actionButton, { backgroundColor: "#b00020" }]}
@@ -47,6 +50,11 @@ const ExpenseCard = ({ item, onEdit, onDelete }) => {
 };
 
 const HomeScreen = ({ navigation }) => {
+  // Inicialmente, usamos o valor do sistema, mas o usuário pode trocar manualmente
+  const systemTheme = useColorScheme();
+  const [isDark, setIsDark] = useState(systemTheme === "dark");
+  const themeStyles = isDark ? darkTheme : lightTheme;
+
   const [expenses, setExpenses] = useState([]);
   const [totalSaved, setTotalSaved] = useState(0);
 
@@ -79,11 +87,19 @@ const HomeScreen = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerText}>Expense Tracker</Text>
+    <SafeAreaView style={[styles.container, themeStyles.container]}>
+      <View style={[styles.header, themeStyles.header]}>
+        <Text style={[styles.headerText, themeStyles.headerText]}>Expense Tracker</Text>
+        {/* Botão para trocar o tema */}
+        <TouchableOpacity onPress={() => setIsDark(!isDark)}>
+          <Text style={{ color: themeStyles.headerText.color, fontSize: 14, marginLeft: 10 }}>
+            Toggle Theme
+          </Text>
+        </TouchableOpacity>
       </View>
-      <Text style={styles.totalSaved}>Total Saved: R${totalSaved}</Text>
+      <Text style={[styles.totalSaved, themeStyles.totalSaved]}>
+        Total Saved: R${totalSaved}
+      </Text>
       <FlatList
         data={expenses}
         keyExtractor={(item) => item.id}
@@ -93,14 +109,15 @@ const HomeScreen = ({ navigation }) => {
             item={item}
             onEdit={() => navigation.navigate("AddEdit", { expense: item })}
             onDelete={() => deleteExpense(item.id)}
+            themeStyles={themeStyles}
           />
         )}
       />
       <TouchableOpacity
-        style={styles.fab}
+        style={[styles.fab, themeStyles.fab]}
         onPress={() => navigation.navigate("AddEdit")}
       >
-        <Text style={styles.fabText}>+</Text>
+        <Text style={[styles.fabText, themeStyles.fabText]}>+</Text>
       </TouchableOpacity>
     </SafeAreaView>
   );
@@ -109,15 +126,15 @@ const HomeScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f2f2f2",
   },
   header: {
-    backgroundColor: "#6200ee",
     paddingVertical: 20,
     paddingHorizontal: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between", // Espaça o título e o botão
   },
   headerText: {
-    color: "#fff",
     fontSize: 24,
     fontWeight: "bold",
     textAlign: "center",
@@ -132,15 +149,11 @@ const styles = StyleSheet.create({
     paddingBottom: 80,
   },
   card: {
-    backgroundColor: "#fff",
     borderRadius: 8,
     padding: 16,
     marginBottom: 12,
     shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
@@ -154,7 +167,6 @@ const styles = StyleSheet.create({
   },
   cardAmount: {
     fontSize: 16,
-    color: "#555",
     marginTop: 4,
   },
   cardActions: {
@@ -165,18 +177,15 @@ const styles = StyleSheet.create({
     marginLeft: 10,
     paddingVertical: 6,
     paddingHorizontal: 12,
-    backgroundColor: "#6200ee",
     borderRadius: 4,
   },
   actionText: {
-    color: "#fff",
     fontSize: 14,
   },
   fab: {
     position: "absolute",
     right: 20,
     bottom: 50,
-    backgroundColor: "#6200ee",
     width: 60,
     height: 60,
     borderRadius: 30,
@@ -185,7 +194,6 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   fabText: {
-    color: "#fff",
     fontSize: 30,
     fontWeight: "bold",
   },
