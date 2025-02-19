@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { View, Text, FlatList, Button, StyleSheet } from "react-native";
 import { db } from "../firebase";
 import { collection, getDocs } from "firebase/firestore";
+import { deleteDoc } from "firebase/firestore";
 
 const HomeScreen = ({ navigation }) => {
   const [expenses, setExpenses] = useState([]);
@@ -23,6 +24,11 @@ const HomeScreen = ({ navigation }) => {
     setTotalSaved(total);
   };
 
+  const deleteExpense = async (id) => {
+    await deleteDoc(doc(db, "expenses", id));
+    fetchExpenses();
+  };
+
   return (
     <View style={styles.container}>
       <Text>Total Saved: R${totalSaved}</Text>
@@ -36,6 +42,7 @@ const HomeScreen = ({ navigation }) => {
               title="Edit"
               onPress={() => navigation.navigate("AddEdit", { expense: item })}
             />
+            <Button title="Delete" onPress={() => deleteExpense(item.id)} />;
           </View>
         )}
       />
