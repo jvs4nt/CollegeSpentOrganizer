@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   View,
   Text,
+  Animated,
   FlatList,
   TouchableOpacity,
   StyleSheet,
@@ -11,26 +12,39 @@ import { db } from "../firebase";
 import { collection, getDocs, deleteDoc, doc } from "firebase/firestore";
 import { useFocusEffect } from "@react-navigation/native";
 
-// Componente para renderizar cada despesa como um "card"
-const ExpenseCard = ({ item, onEdit, onDelete }) => (
-  <View style={styles.card}>
-    <View style={styles.cardContent}>
-      <Text style={styles.cardTitle}>{item.description}</Text>
-      <Text style={styles.cardAmount}>R${item.amount}</Text>
-    </View>
-    <View style={styles.cardActions}>
-      <TouchableOpacity style={styles.actionButton} onPress={onEdit}>
-        <Text style={styles.actionText}>Edit</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={[styles.actionButton, { backgroundColor: "#b00020" }]}
-        onPress={onDelete}
-      >
-        <Text style={styles.actionText}>Delete</Text>
-      </TouchableOpacity>
-    </View>
-  </View>
-);
+const ExpenseCard = ({ item, onEdit, onDelete }) => {
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+
+  const handleDelete = () => {
+    Animated.timing(fadeAnim, {
+      toValue: 0,
+      duration: 500,
+      useNativeDriver: true,
+    }).start(() => {
+      onDelete();
+    });
+  };
+
+  return (
+    <Animated.View style={[styles.card, { opacity: fadeAnim }]}>
+      <View style={styles.cardContent}>
+        <Text style={styles.cardTitle}>{item.description}</Text>
+        <Text style={styles.cardAmount}>R${item.amount}</Text>
+      </View>
+      <View style={styles.cardActions}>
+        <TouchableOpacity style={styles.actionButton} onPress={onEdit}>
+          <Text style={styles.actionText}>Edit</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.actionButton, { backgroundColor: "#b00020" }]}
+          onPress={handleDelete}
+        >
+          <Text style={styles.actionText}>Delete</Text>
+        </TouchableOpacity>
+      </View>
+    </Animated.View>
+  );
+};
 
 const HomeScreen = ({ navigation }) => {
   const [expenses, setExpenses] = useState([]);
@@ -115,7 +129,7 @@ const styles = StyleSheet.create({
   },
   list: {
     paddingHorizontal: 16,
-    paddingBottom: 80, 
+    paddingBottom: 80,
   },
   card: {
     backgroundColor: "#fff",
