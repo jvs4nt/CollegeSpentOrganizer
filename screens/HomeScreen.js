@@ -8,9 +8,10 @@ import {
   StyleSheet,
   SafeAreaView,
   useColorScheme,
+  Switch,
 } from "react-native";
 import { db } from "../firebase";
-import { collection, getDocs, deleteDoc, doc } from "firebase/firestore";
+import { collection, getDocs, deleteDoc, doc, addDoc } from "firebase/firestore";
 import { useFocusEffect } from "@react-navigation/native";
 import { darkTheme, lightTheme } from "./themes/themes";
 
@@ -35,7 +36,10 @@ const ExpenseCard = ({ item, onEdit, onDelete, themeStyles }) => {
         <Text style={[styles.cardAmount, themeStyles.cardAmount]}>R${item.amount}</Text>
       </View>
       <View style={styles.cardActions}>
-        <TouchableOpacity style={[styles.actionButton, themeStyles.actionButton]} onPress={onEdit}>
+        <TouchableOpacity
+          style={[styles.actionButton, themeStyles.actionButton]}
+          onPress={onEdit}
+        >
           <Text style={[styles.actionText, themeStyles.actionText]}>Edit</Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -50,7 +54,7 @@ const ExpenseCard = ({ item, onEdit, onDelete, themeStyles }) => {
 };
 
 const HomeScreen = ({ navigation }) => {
-  // Inicialmente, usamos o valor do sistema, mas o usuário pode trocar manualmente
+  // Inicialmente, usamos o tema do sistema, mas o usuário pode trocar manualmente
   const systemTheme = useColorScheme();
   const [isDark, setIsDark] = useState(systemTheme === "dark");
   const themeStyles = isDark ? darkTheme : lightTheme;
@@ -83,23 +87,42 @@ const HomeScreen = ({ navigation }) => {
 
   const deleteExpense = async (id) => {
     await deleteDoc(doc(db, "expenses", id));
+    // Registra a operação de exclusão no log
+    await addDoc(collection(db, "logs"), {
+      operation: "delete",
+      expenseId: id,
+      timestamp: new Date().toISOString(),
+    });
     fetchExpenses();
   };
 
   return (
     <SafeAreaView style={[styles.container, themeStyles.container]}>
       <View style={[styles.header, themeStyles.header]}>
-        <Text style={[styles.headerText, themeStyles.headerText]}>Expense Tracker</Text>
-        {/* Botão para trocar o tema */}
-        <TouchableOpacity onPress={() => setIsDark(!isDark)}>
-          <Text style={{ color: themeStyles.headerText.color, fontSize: 14, marginLeft: 10 }}>
-            Toggle Theme
+        <Text style={[styles.headerText, themeStyles.headerText]}>
+          Expense Tracker
+        </Text>
+        <Switch
+          value={isDark}
+          onValueChange={() => setIsDark(!isDark)}
+          trackColor={{ false: "#767577", true: "#81b0ff" }}
+          thumbColor={isDark ? "#f5dd4b" : "#f4f3f4"}
+        />
+      </View>
+      {/* Área de resumo: Total Saved e botão History */}
+      <View style={styles.summaryContainer}>
+        <Text style={[styles.totalSaved, themeStyles.totalSaved]}>
+          Total Saved: R${totalSaved}
+        </Text>
+        <TouchableOpacity
+          style={styles.historyButton}
+          onPress={() => navigation.navigate("History")}
+        >
+          <Text style={[styles.historyText, themeStyles.headerText]}>
+            History
           </Text>
         </TouchableOpacity>
       </View>
-      <Text style={[styles.totalSaved, themeStyles.totalSaved]}>
-        Total Saved: R${totalSaved}
-      </Text>
       <FlatList
         data={expenses}
         keyExtractor={(item) => item.id}
@@ -124,30 +147,31 @@ const HomeScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1 },
   header: {
     paddingVertical: 20,
     paddingHorizontal: 16,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between", // Espaça o título e o botão
+    justifyContent: "space-between",
   },
-  headerText: {
-    fontSize: 24,
-    fontWeight: "bold",
-    textAlign: "center",
-  },
-  totalSaved: {
-    fontSize: 20,
-    textAlign: "center",
+  headerText: { fontSize: 24, fontWeight: "bold" },
+  summaryContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginHorizontal: 16,
     marginVertical: 15,
   },
-  list: {
-    paddingHorizontal: 16,
-    paddingBottom: 80,
+  totalSaved: { fontSize: 20 },
+  historyButton: {
+    backgroundColor: "#6200ee",
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 4,
   },
+  historyText: { color: "#fff", fontSize: 14 },
+  list: { paddingHorizontal: 16, paddingBottom: 80 },
   card: {
     borderRadius: 8,
     padding: 16,
@@ -158,30 +182,17 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
     elevation: 5,
   },
-  cardContent: {
-    marginBottom: 12,
-  },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-  },
-  cardAmount: {
-    fontSize: 16,
-    marginTop: 4,
-  },
-  cardActions: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-  },
+  cardContent: { marginBottom: 12 },
+  cardTitle: { fontSize: 18, fontWeight: "bold" },
+  cardAmount: { fontSize: 16, marginTop: 4 },
+  cardActions: { flexDirection: "row", justifyContent: "flex-end" },
   actionButton: {
     marginLeft: 10,
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 4,
   },
-  actionText: {
-    fontSize: 14,
-  },
+  actionText: { fontSize: 14, color: "white" },
   fab: {
     position: "absolute",
     right: 20,
@@ -193,10 +204,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     elevation: 8,
   },
-  fabText: {
-    fontSize: 30,
-    fontWeight: "bold",
-  },
+  fabText: { fontSize: 30, fontWeight: "bold" },
 });
 
 export default HomeScreen;

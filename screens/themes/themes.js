@@ -1,7 +1,8 @@
 export const lightTheme = {
     container: { backgroundColor: "#f2f2f2" },
     header: { backgroundColor: "#6200ee" },
-    headerText: { color: "#fff" },
+    headerText: { color: "#000" },
+    historyHeaderText: { color: "grey" },
     totalSaved: { color: "#000" },
     card: { backgroundColor: "#fff" },
     cardTitle: { color: "#000" },
