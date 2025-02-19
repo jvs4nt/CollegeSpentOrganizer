@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { db } from "../firebase";
 import { collection, addDoc, doc, updateDoc } from "firebase/firestore";
-import { TextInputMask } from 'react-native-masked-text';
+import { TextInputMask } from "react-native-masked-text";
 
 const AddEditScreen = ({ route, navigation }) => {
   const [description, setDescription] = useState("");
@@ -24,27 +24,34 @@ const AddEditScreen = ({ route, navigation }) => {
   }, [expense]);
 
   const saveExpense = async () => {
-
-    const rawValue = amount
-      .replace(/[^0-9,]/g, "")  
-      .replace(",", "."); 
-
+    const rawValue = amount.replace(/[^0-9,]/g, "").replace(",", ".");
     const parsedAmount = parseFloat(rawValue) || 0;
+    const timestamp = new Date().toISOString();
 
     if (expense) {
       await updateDoc(doc(db, "expenses", expense.id), {
         description,
         amount: parsedAmount,
       });
+      await addDoc(collection(db, "logs"), {
+        operation: "update",
+        expenseId: expense.id,
+        description,
+        amount: parsedAmount,
+        timestamp,
+      });
     } else {
-      try {
-        await addDoc(collection(db, "expenses"), {
-          description,
-          amount: parsedAmount,
-        });
-      } catch (error) {
-        console.error("Error adding document: ", error);
-      }
+      const docRef = await addDoc(collection(db, "expenses"), {
+        description,
+        amount: parsedAmount,
+      });
+      await addDoc(collection(db, "logs"), {
+        operation: "add",
+        expenseId: docRef.id,
+        description,
+        amount: parsedAmount,
+        timestamp,
+      });
     }
     navigation.goBack();
   };
@@ -87,24 +94,10 @@ const AddEditScreen = ({ route, navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#f2f2f2",
-  },
-  header: {
-    backgroundColor: "#6200ee",
-    paddingVertical: 20,
-    paddingHorizontal: 16,
-  },
-  headerText: {
-    color: "#fff",
-    fontSize: 24,
-    fontWeight: "bold",
-    textAlign: "center",
-  },
-  form: {
-    padding: 16,
-  },
+  container: { flex: 1, backgroundColor: "#f2f2f2" },
+  header: { backgroundColor: "#6200ee", paddingVertical: 20, paddingHorizontal: 16 },
+  headerText: { color: "#fff", fontSize: 24, fontWeight: "bold", textAlign: "center" },
+  form: { padding: 16 },
   input: {
     backgroundColor: "#fff",
     padding: 12,
@@ -120,11 +113,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: "center",
   },
-  buttonText: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "bold",
-  },
+  buttonText: { color: "#fff", fontSize: 18, fontWeight: "bold" },
 });
 
 export default AddEditScreen;
