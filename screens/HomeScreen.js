@@ -1,38 +1,64 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   View,
   Text,
+  Animated,
   FlatList,
   TouchableOpacity,
   StyleSheet,
   SafeAreaView,
+  useColorScheme,
+  Switch,
 } from "react-native";
 import { db } from "../firebase";
-import { collection, getDocs, deleteDoc, doc } from "firebase/firestore";
+import { collection, getDocs, deleteDoc, doc, addDoc } from "firebase/firestore";
 import { useFocusEffect } from "@react-navigation/native";
+import { darkTheme, lightTheme } from "./themes/themes";
 
-// Componente para renderizar cada despesa como um "card"
-const ExpenseCard = ({ item, onEdit, onDelete }) => (
-  <View style={styles.card}>
-    <View style={styles.cardContent}>
-      <Text style={styles.cardTitle}>{item.description}</Text>
-      <Text style={styles.cardAmount}>R${item.amount}</Text>
-    </View>
-    <View style={styles.cardActions}>
-      <TouchableOpacity style={styles.actionButton} onPress={onEdit}>
-        <Text style={styles.actionText}>Edit</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={[styles.actionButton, { backgroundColor: "#b00020" }]}
-        onPress={onDelete}
-      >
-        <Text style={styles.actionText}>Delete</Text>
-      </TouchableOpacity>
-    </View>
-  </View>
-);
+// Componente para renderizar cada despesa como um "card" animado
+const ExpenseCard = ({ item, onEdit, onDelete, themeStyles }) => {
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+
+  const handleDelete = () => {
+    Animated.timing(fadeAnim, {
+      toValue: 0,
+      duration: 500,
+      useNativeDriver: true,
+    }).start(() => {
+      onDelete();
+    });
+  };
+
+  return (
+    <Animated.View style={[styles.card, themeStyles.card, { opacity: fadeAnim }]}>
+      <View style={styles.cardContent}>
+        <Text style={[styles.cardTitle, themeStyles.cardTitle]}>{item.description}</Text>
+        <Text style={[styles.cardAmount, themeStyles.cardAmount]}>R${item.amount}</Text>
+      </View>
+      <View style={styles.cardActions}>
+        <TouchableOpacity
+          style={[styles.actionButton, themeStyles.actionButton]}
+          onPress={onEdit}
+        >
+          <Text style={[styles.actionText, themeStyles.actionText]}>Edit</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.actionButton, { backgroundColor: "#b00020" }]}
+          onPress={handleDelete}
+        >
+          <Text style={styles.actionText}>Delete</Text>
+        </TouchableOpacity>
+      </View>
+    </Animated.View>
+  );
+};
 
 const HomeScreen = ({ navigation }) => {
+  // Inicialmente, usamos o tema do sistema, mas o usuário pode trocar manualmente
+  const systemTheme = useColorScheme();
+  const [isDark, setIsDark] = useState(systemTheme === "dark");
+  const themeStyles = isDark ? darkTheme : lightTheme;
+
   const [expenses, setExpenses] = useState([]);
   const [totalSaved, setTotalSaved] = useState(0);
 
@@ -61,15 +87,42 @@ const HomeScreen = ({ navigation }) => {
 
   const deleteExpense = async (id) => {
     await deleteDoc(doc(db, "expenses", id));
+    // Registra a operação de exclusão no log
+    await addDoc(collection(db, "logs"), {
+      operation: "delete",
+      expenseId: id,
+      timestamp: new Date().toISOString(),
+    });
     fetchExpenses();
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerText}>Expense Tracker</Text>
+    <SafeAreaView style={[styles.container, themeStyles.container]}>
+      <View style={[styles.header, themeStyles.header]}>
+        <Text style={[styles.headerText, themeStyles.headerText]}>
+          Expense Tracker
+        </Text>
+        <Switch
+          value={isDark}
+          onValueChange={() => setIsDark(!isDark)}
+          trackColor={{ false: "#767577", true: "#81b0ff" }}
+          thumbColor={isDark ? "#f5dd4b" : "#f4f3f4"}
+        />
       </View>
-      <Text style={styles.totalSaved}>Total Saved: R${totalSaved}</Text>
+      {/* Área de resumo: Total Saved e botão History */}
+      <View style={styles.summaryContainer}>
+        <Text style={[styles.totalSaved, themeStyles.totalSaved]}>
+          Total Saved: R${totalSaved}
+        </Text>
+        <TouchableOpacity
+          style={styles.historyButton}
+          onPress={() => navigation.navigate("History")}
+        >
+          <Text style={[styles.historyText, themeStyles.headerText]}>
+            History
+          </Text>
+        </TouchableOpacity>
+      </View>
       <FlatList
         data={expenses}
         keyExtractor={(item) => item.id}
@@ -79,90 +132,71 @@ const HomeScreen = ({ navigation }) => {
             item={item}
             onEdit={() => navigation.navigate("AddEdit", { expense: item })}
             onDelete={() => deleteExpense(item.id)}
+            themeStyles={themeStyles}
           />
         )}
       />
       <TouchableOpacity
-        style={styles.fab}
+        style={[styles.fab, themeStyles.fab]}
         onPress={() => navigation.navigate("AddEdit")}
       >
-        <Text style={styles.fabText}>+</Text>
+        <Text style={[styles.fabText, themeStyles.fabText]}>+</Text>
       </TouchableOpacity>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#f2f2f2",
-  },
+  container: { flex: 1 },
   header: {
-    backgroundColor: "#6200ee",
     paddingVertical: 20,
     paddingHorizontal: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
-  headerText: {
-    color: "#fff",
-    fontSize: 24,
-    fontWeight: "bold",
-    textAlign: "center",
-  },
-  totalSaved: {
-    fontSize: 20,
-    textAlign: "center",
+  headerText: { fontSize: 24, fontWeight: "bold" },
+  summaryContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginHorizontal: 16,
     marginVertical: 15,
   },
-  list: {
-    paddingHorizontal: 16,
-    paddingBottom: 80, 
+  totalSaved: { fontSize: 20 },
+  historyButton: {
+    backgroundColor: "#6200ee",
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 4,
   },
+  historyText: { color: "#fff", fontSize: 14 },
+  list: { paddingHorizontal: 16, paddingBottom: 80 },
   card: {
-    backgroundColor: "#fff",
     borderRadius: 8,
     padding: 16,
     marginBottom: 12,
     shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
   },
-  cardContent: {
-    marginBottom: 12,
-  },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-  },
-  cardAmount: {
-    fontSize: 16,
-    color: "#555",
-    marginTop: 4,
-  },
-  cardActions: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-  },
+  cardContent: { marginBottom: 12 },
+  cardTitle: { fontSize: 18, fontWeight: "bold" },
+  cardAmount: { fontSize: 16, marginTop: 4 },
+  cardActions: { flexDirection: "row", justifyContent: "flex-end" },
   actionButton: {
     marginLeft: 10,
     paddingVertical: 6,
     paddingHorizontal: 12,
-    backgroundColor: "#6200ee",
     borderRadius: 4,
   },
-  actionText: {
-    color: "#fff",
-    fontSize: 14,
-  },
+  actionText: { fontSize: 14, color: "white" },
   fab: {
     position: "absolute",
     right: 20,
     bottom: 50,
-    backgroundColor: "#6200ee",
     width: 60,
     height: 60,
     borderRadius: 30,
@@ -170,11 +204,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     elevation: 8,
   },
-  fabText: {
-    color: "#fff",
-    fontSize: 30,
-    fontWeight: "bold",
-  },
+  fabText: { fontSize: 30, fontWeight: "bold" },
 });
 
 export default HomeScreen;
